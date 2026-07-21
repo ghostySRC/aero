@@ -1,0 +1,57 @@
+name: Build Unsigned iOS IPA
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+  workflow_dispatch:
+
+jobs:
+  build-ipa:
+    name: Build Unsigned Aero.ipa
+    runs-on: macos-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Run Expo Prebuild (iOS)
+        run: npx expo prebuild --platform ios
+
+      - name: Build Xcode Archive (Signature Bypass)
+        run: |
+          cd ios
+          xcodebuild archive \
+            -workspace Aero.xcworkspace \
+            -scheme Aero \
+            -configuration Release \
+            -archivePath build/Aero.xcarchive \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGN_IDENTITY="" \
+            PROVISIONING_PROFILE="" \
+            clean archive
+
+      - name: Package Unsigned Aero.ipa
+        run: |
+          mkdir -p Payload
+          cp -r ios/build/Aero.xcarchive/Products/Applications/Aero.app Payload/
+          zip -r Aero.ipa Payload
+          echo "Aero.ipa successfully packaged for sideloading!"
+
+      - name: Upload Aero.ipa Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: Aero-Unsigned-IPA
+          path: Aero.ipa
+          retention-days: 30
