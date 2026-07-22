@@ -13,21 +13,7 @@
     "production": {},
     "unsigned": {
       "ios": {
-        "simulator": false,
-        "enterpriseProvisioning": "adhoc"
-      }
-    }
-  }
-}
-{
-  "cli": {
-    "version": ">= 10.0.0"
-  },
-  "build": {
-    "unsigned": {
-      "ios": {
-        "buildConfiguration": "Release",
-        "simulator": false
+        "simulator": true
       }
     }
   }
