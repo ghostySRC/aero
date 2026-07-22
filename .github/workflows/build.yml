@@ -40,7 +40,6 @@ jobs:
                     content = content.replace(/CodegenTypes\./g, "");
                     content = `import type { Float, Double, Int32, WithDefault } from "react-native/Libraries/Types/CodegenTypes";\n` + content;
                     fs.writeFileSync(full, content);
-                    console.log("Patched for Codegen:", full);
                   }
                 }
               });
@@ -53,6 +52,19 @@ jobs:
         env:
           CI: '1'
 
+      - name: Enforce Minimum iOS Deployment Target in Pods
+        run: |
+          node -e '
+            const fs = require("fs");
+            const podfile = "ios/Podfile";
+            if (fs.existsSync(podfile)) {
+              let content = fs.readFileSync(podfile, "utf8");
+              const hook = `\npost_install do |installer|\n  installer.pods_project.targets.each do |target|\n    target.build_configurations.each do |config|\n      config.build_settings["IPHONEOS_DEPLOYMENT_TARGET"] = "15.1"\n    end\n  end\nend\n`;
+              content += hook;
+              fs.writeFileSync(podfile, content);
+            }
+          '
+
       - name: Install CocoaPods
         working-directory: ios
         run: pod install
@@ -60,14 +72,14 @@ jobs:
       - name: Build Xcode App (Simulator Target)
         working-directory: ios
         run: |
-          xcodebuild -workspace *.xcworkspace \
+          xcodebuild -workspace Aero.xcworkspace \
                      -scheme Aero \
                      -configuration Release \
-                     -sdk iphonesimulator \
+                     -destination 'generic/platform=iOS Simulator' \
                      -derivedDataPath build \
-                     CODE_SIGN_IDENTITY="" \
+                     CODE_SIGNING_ALLOWED=NO \
                      CODE_SIGNING_REQUIRED=NO \
-                     CODE_SIGNING_ALLOWED=NO
+                     CODE_SIGN_IDENTITY=""
 
       - name: Package into IPA
         run: |
