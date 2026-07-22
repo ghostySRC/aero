@@ -21,30 +21,33 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Generate iOS Native Project
-        run: npx expo prebuild --platform ios
+      - name: Generate iOS Native Code
+        run: npx expo prebuild --platform ios --no-install
+        env:
+          CI: 1
 
       - name: Install CocoaPods
         run: |
           cd ios
           pod install
 
-      - name: Build Xcode App (Simulator Target)
+      - name: Build Xcode Archive (Device ARM64)
         run: |
           cd ios
-          xcodebuild -workspace *.xcworkspace \
+          xcodebuild -workspace Aero.xcworkspace \
                      -scheme Aero \
                      -configuration Release \
-                     -sdk iphonesimulator \
+                     -sdk iphoneos \
                      -derivedDataPath build \
                      CODE_SIGN_IDENTITY="" \
                      CODE_SIGNING_REQUIRED=NO \
-                     CODE_SIGNING_ALLOWED=NO
+                     CODE_SIGNING_ALLOWED=NO \
+                     AD_HOC_CODE_SIGNING_ALLOWED=YES
 
       - name: Package .app into .ipa
         run: |
           mkdir -p Payload
-          cp -r ios/build/Build/Products/Release-iphonesimulator/*.app Payload/
+          cp -r ios/build/Build/Products/Release-iphoneos/*.app Payload/
           zip -r Aero-Unsigned.ipa Payload
 
       - name: Upload IPA Artifact
