@@ -21,41 +21,18 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Setup Expo
-        uses: expo/expo-github-action@v8
-        with:
-          eas-version: latest
-          token: ${{ secrets.EXPO_TOKEN }}
+      - name: Setup EAS CLI
+        run: npm install -g eas-cli
 
-      - name: Run Expo Prebuild
-        run: npx expo prebuild --platform ios
-
-      - name: Install CocoaPods
+      - name: Build Unsigned IPA locally on runner
         run: |
-          cd ios
-          pod install
-
-      - name: Build Xcode Archive
-        run: |
-          cd ios
-          xcodebuild -workspace *.xcworkspace \
-                     -scheme Aero \
-                     -configuration Release \
-                     -sdk iphoneos \
-                     -derivedDataPath build \
-                     CODE_SIGN_IDENTITY="" \
-                     CODE_SIGNING_REQUIRED=NO \
-                     CODE_SIGNING_ALLOWED=NO \
-                     ACTION=build
-
-      - name: Package into .ipa
-        run: |
-          mkdir -p Payload
-          cp -r ios/build/Build/Products/Release-iphoneos/*.app Payload/
-          zip -r Aero-Unsigned.ipa Payload
+          eas build --platform ios --profile unsigned --local --non-interactive --output ./Aero-Unsigned.ipa
+        env:
+          EAS_NO_VCS: 1
 
       - name: Upload IPA Artifact
         uses: actions/upload-artifact@v4
         with:
           name: Aero-Unsigned-IPA
           path: Aero-Unsigned.ipa
+          retention-days: 7
