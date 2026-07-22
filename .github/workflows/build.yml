@@ -52,16 +52,18 @@ jobs:
         env:
           CI: '1'
 
-      - name: Enforce Minimum iOS Deployment Target in Pods
+      - name: Inject Deployment Target into Existing Podfile Hook
         run: |
           node -e '
             const fs = require("fs");
             const podfile = "ios/Podfile";
             if (fs.existsSync(podfile)) {
               let content = fs.readFileSync(podfile, "utf8");
-              const hook = `\npost_install do |installer|\n  installer.pods_project.targets.each do |target|\n    target.build_configurations.each do |config|\n      config.build_settings["IPHONEOS_DEPLOYMENT_TARGET"] = "15.1"\n    end\n  end\nend\n`;
-              content += hook;
-              fs.writeFileSync(podfile, content);
+              const codeToInject = `\n    installer.pods_project.targets.each do |target|\n      target.build_configurations.each do |config|\n        config.build_settings["IPHONEOS_DEPLOYMENT_TARGET"] = "15.1"\n      end\n    end\n`;
+              if (content.includes("post_install do |installer|")) {
+                content = content.replace("post_install do |installer|", "post_install do |installer|" + codeToInject);
+                fs.writeFileSync(podfile, content);
+              }
             }
           '
 
