@@ -21,6 +21,33 @@ jobs:
       - name: Install Node Dependencies
         run: npm ci
 
+      - name: Patch @callstack/liquid-glass for Codegen compatibility
+        run: |
+          node -e '
+            const fs = require("fs");
+            const path = require("path");
+            const dir = "node_modules/@callstack/liquid-glass";
+            function patch(dirPath) {
+              if (!fs.existsSync(dirPath)) return;
+              fs.readdirSync(dirPath).forEach(file => {
+                const full = path.join(dirPath, file);
+                if (fs.statSync(full).isDirectory()) {
+                  patch(full);
+                } else if (full.endsWith(".ts") || full.endsWith(".tsx") || full.endsWith(".js")) {
+                  let content = fs.readFileSync(full, "utf8");
+                  if (content.includes("CodegenTypes")) {
+                    content = content.replace(/type CodegenTypes,?/g, "");
+                    content = content.replace(/CodegenTypes\./g, "");
+                    content = `import type { Float, Double, Int32, WithDefault } from "react-native/Libraries/Types/CodegenTypes";\n` + content;
+                    fs.writeFileSync(full, content);
+                    console.log("Patched for Codegen:", full);
+                  }
+                }
+              });
+            }
+            patch(dir);
+          '
+
       - name: Run Expo Prebuild
         run: npx expo prebuild --platform ios --clean
         env:
@@ -30,7 +57,7 @@ jobs:
         working-directory: ios
         run: pod install
 
-      - name: Build Xcode App
+      - name: Build Xcode App (Simulator Target)
         working-directory: ios
         run: |
           xcodebuild -workspace *.xcworkspace \
